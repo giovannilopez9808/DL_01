@@ -1,0 +1,15 @@
+#!/bin/bash
+##SBATCH --partition=C1Mitad1
+#SBATCH --partition=GPU
+#SBATCH --job-name=Down
+#SBATCH --output=results.log
+##SBATCH --mail-type=END,FAIL
+##SBATCH --mail-user=giovanni.lopez@cimat.mx
+cd /home/est_posgrado_giovanni.lopez/Maquina_II/Tarea_01/Scripts
+source /opt/anaconda3_titan/bin/activate
+conda activate tensorflow
+export TF_ENABLE_ONEDNN_OPTS=0
+hostname
+date
+python train.py
+date
