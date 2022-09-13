@@ -26,84 +26,60 @@ from numpy import array
 import time
 
 loss_object = BinaryCrossentropy(from_logits=True)
-OUTPUT_CHANNELS = 3
+OUTPUT_CHANNELS = 1
 LAMBDA = 100
 
 
 def upsample(filters,
              size,
              apply_dropout=False) -> Model:
-    initializer = random_normal_initializer(0., 0.02)
+    # initializer = random_normal_initializer(0., 0.02)
     result = Sequential()
     result.add(
         Conv2DTranspose(filters,
                         size,
                         strides=2,
                         padding='same',
-                        kernel_initializer=initializer,
+                        # kernel_initializer=initializer,
                         use_bias=False)
     )
-    # result.add(BatchNormalization())
+    result.add(BatchNormalization())
     if apply_dropout:
-        result.add(Dropout(0.5))
-    # result.add(ReLU())
+        pass
+        # result.add(Dropout(0.5))
+    result.add(ReLU())
     return result
 
 
 def downsample(filters,
                size,
                apply_batchnorm=True) -> Model:
-    initializer = random_normal_initializer(0., 0.02)
+    # initializer = random_normal_initializer(0., 0.02)
     result = Sequential()
     result.add(
         Conv2D(filters,
                size,
                strides=2,
                padding='same',
-               kernel_initializer=initializer,
+               # kernel_initializer=initializer,
                use_bias=False)
     )
     if apply_batchnorm:
         pass
         # result.add(BatchNormalization())
-    # result.add(LeakyReLU())
+    result.add(LeakyReLU())
     return result
-
-
-def get_conv_layer(filters,
-                   size) -> Model:
-    initializer = random_normal_initializer(0, 0.02)
-    result = Sequential([
-        Conv2D(filters,
-               (size,size),
-               padding="same",
-               kernel_initializer=initializer,
-               ),
-        # BatchNormalization(),
-        # ReLU(),
-    ])
-    return result
-
-
-def get_conv_blocks() -> list:
-    conv_blocks = [
-        # get_conv_layer(64, 3),
-        # get_conv_layer(64, 3),
-        # get_conv_layer(128, 3),
-        # get_conv_layer(128, 3),
-        # get_conv_layer(128, 3),
-        # get_conv_layer(128, 3),
-    ]
-    return conv_blocks
 
 
 def Generator() -> Model:
     left_input = Input(shape=[256,
                               256,
-                              3])
+                              3],
+                       name="left_generator")
     right_input = Input(shape=[256,
                                256,
-                               3])
+                               3],
+                        name="right_generator")
     # conv_blocks = get_conv_blocks()
     down_stack = [
         # (batch_size, 128, 128, 64)
@@ -113,42 +89,12 @@ def Generator() -> Model:
         downsample(128,
                    4),
         # (batch_size, 32, 32, 256)
-        # downsample(64,
-                   # 4),
-        # (batch_size, 16, 16, 512)
-        # downsample(512,
-                   # 4),
-        # (batch_size, 8, 8, 512)
-        # downsample(512,
-                   # 4),
-        # (batch_size, 4, 4, 512)
-        # downsample(512,
-                   # 4),
-        # (batch_size, 2, 2, 512)
-        # downsample(512,
-                   # 4),
-        # (batch_size, 1, 1, 512)
-        # downsample(512,
+        # downsample(256,
                    # 4),
     ]
     up_stack = [
-        # (batch_size, 2, 2, 1024)
-        # upsample(512,
-                 # 4,
-                 # apply_dropout=True),
-        # (batch_size, 4, 4, 1024)
-        # upsample(512,
-                 # 4,
-                 # apply_dropout=True),
-        # (batch_size, 8, 8, 1024)
-        # upsample(512,
-                 # 4,
-                 # apply_dropout=True),
-        # (batch_size, 16, 16, 1024)
-        # upsample(512,
-                 # 4),
         # (batch_size, 32, 32, 512)
-        # upsample(64,
+        # upsample(256,
                  # 4),
         # (batch_size, 64, 64, 256)
         upsample(128,
@@ -159,6 +105,12 @@ def Generator() -> Model:
     ]
     # initializer = random_normal_initializer(0., 0.02)
     # (batch_size, 256, 256, 3)
+    conv1 = Conv2D(64,
+                  4,
+                  padding="same")
+    conv2 = Conv2D(32,
+                   4,
+                   padding="same")
     last = Conv2DTranspose(OUTPUT_CHANNELS,
                            4,
                            strides=2,
@@ -177,12 +129,13 @@ def Generator() -> Model:
     for down in down_stack:
         x = down(x)
         skips.append(x)
-
     skips = reversed(skips[:-1])
     # Upsampling and establishing the skip connections
     for up, skip in zip(up_stack, skips):
         x = up(x)
         x = concatenate([x, skip])
+    x=conv1(x)
+    x=conv2(x)
     x = last(x)
     return Model(inputs=[left_input,
                          right_input],
@@ -205,36 +158,31 @@ def Discriminator() -> Model:
                        name='left_input_image')
     right_input = Input(shape=[256, 256, 3],
                         name='right_input_image')
-    # conv_blocks = get_conv_blocks()
     # (batch_size, 256, 256, channels*2)
-    tar = Input(shape=[256, 256, 3],
+    tar = Input(shape=[256, 256, 1],
                 name='target_image')
     x1 = left_input
     x2 = right_input
-    # for conv_block in conv_blocks:
-        # x1 = conv_block(x1)
-        # x2 = conv_block(x2)
     x = concatenate([x1,
                        x2,
                        tar])
-    # inp = get_conv_layer(128, 3)(inp)
-    # inp = get_conv_layer(128, 3)(inp)
     # x = concatenate([inp, tar])
     # (batch_size, 128, 128, 64)
     down1 = downsample(64, 4, False)(x)
     # (batch_size, 64, 64, 128)
     down2 = downsample(128, 4)(down1)
     # (batch_size, 32, 32, 256)
-    down3 = downsample(256, 4)(down2)
+    # down3 = downsample(256, 4)(down2)
     # (batch_size, 34, 34, 256)
-    zero_pad1 = ZeroPadding2D()(down3)
+    zero_pad1 = ZeroPadding2D()(down2)
     # (batch_size, 31, 31, 512)
     conv = Conv2D(512,
                   4,
                   strides=1,
                   kernel_initializer=initializer,
                   use_bias=False)(zero_pad1)
-    batchnorm1 = BatchNormalization()(conv)
+    # batchnorm1 = BatchNormalization()(conv)
+    batchnorm1=conv
     # leaky_relu = batchnorm1
     leaky_relu = LeakyReLU()(batchnorm1)
     # (batch_size, 33, 33, 512)

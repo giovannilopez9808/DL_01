@@ -1,8 +1,8 @@
 from dataset import dataset_model
+import matplotlib.pyplot as plt
 from params import get_params
 from pix2pix import pix2pix
 from PIL import Image
-import matplotlib.image
 from numpy import min,max
 
 params = get_params()
@@ -11,12 +11,23 @@ model = pix2pix()
 data=list( dataset.test.take(1).as_numpy_iterator())
 left,right,target=data[0]
 model.fit(dataset.train,
-          20000)
+          1000)
 predict = model.generator([left,
                            right])
 predict=predict.numpy()[0]
-print(min(predict),max(predict),predict.shape)
+# print(min(predict),max(predict),predict.shape)
+target=(target+1)/2
 predict=(predict+1)/2
-print(min(predict),max(predict),predict.shape)
-matplotlib.image.imsave('test.png', predict)
-
+fig,(ax1,ax2)=plt.subplots(1,2,
+                           figsize=(12,6))
+ax1.imshow(target[0],
+           cmap="gray")
+ax1.axis("off")
+ax2.imshow(predict,
+           cmap="gray")
+ax2.axis("off")
+plt.tight_layout()
+plt.savefig("test.png")
+# print(min(predict),max(predict),predict.shape)
+# matplotlib.image.imsave('test.png', predict)
+# matplotlib.image.imsave('target.png', target[0])

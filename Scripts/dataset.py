@@ -22,10 +22,14 @@ class dataset_model:
         self._read_test_dataset()
 
     def _read_image(self,
-                    filename: str) -> array:
+                    filename: str,
+                    istarget:bool=False) -> array:
         image = io.read_file(filename)
+        channel=3
+        if istarget:
+            channel=1
         image = image_tf.decode_png(image,
-                                    channels=3)
+                                    channels=channel)
         image = image_tf.convert_image_dtype(image,
                                              float32)
         image = image_tf.resize(image,
@@ -41,7 +45,8 @@ class dataset_model:
         return (
             self._read_image(left_image),
             self._read_image(right_image),
-            self._read_image(target_image),
+            self._read_image(target_image,
+                             istarget=True),
         )
 
     def _normalization_image(self,
