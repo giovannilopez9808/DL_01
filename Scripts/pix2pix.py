@@ -12,8 +12,9 @@ from keras.layers import (BatchNormalization,
                           concatenate,
                           Conv2D,
                           Input)
+from tensorflow.train import (latest_checkpoint,
+                              Checkpoint)
 from keras.losses import BinaryCrossentropy
-from tensorflow.train import Checkpoint
 from keras.optimizers import Adam
 from keras import (Sequential,
                    Model)
@@ -136,7 +137,7 @@ def Generator() -> Model:
     for up, skip in zip(up_stack, skips):
         x = up(x)
         x = concatenate([x, skip])
-    x = conv1(x)
+    x = conv1(x) 
     x = conv2(x)
     x = last(x)
     return Model(inputs=[left_input,
@@ -204,8 +205,9 @@ def discriminator_loss(disc_real_output,
 
 
 class pix2pix:
-    def __init__(self) -> None:
-        self.checkpoint_path = "../Models/Checkpoint"
+    def __init__(self,
+                 params:dict) -> None:
+        self.checkpoint_path = params["checkpoint path"]
         self._create_model()
 
     def _create_model(self) -> None:
@@ -255,9 +257,8 @@ class pix2pix:
                       end='',
                       flush=True)
             # Save (checkpoint) the model every 5k steps
-            if (step + 1) % 20000 == 0:
+            if (step + 1) % 100000 == 0:
                 self.checkpoint.save(file_prefix=self.checkpoint_prefix)
-        self._save_models()
 
     @function
     def _train_step(self,
@@ -301,11 +302,6 @@ class pix2pix:
                 self.discriminator.trainable_variables)
         )
 
-    def _save_models(self) -> None:
-        path = "../Models"
-        filename = join(path,
-                        "generator.h5")
-        self.generator.save(filename)
-        filename = join(path,
-                        "discriminator.h5")
-        self.discriminator.save(filename)
+    def restore(self)->Model:
+        latest = latest_checkpoint(self.checkpoint_path)
+        self.checkpoint.restore(latest)
