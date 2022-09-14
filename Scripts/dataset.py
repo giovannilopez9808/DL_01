@@ -6,7 +6,6 @@ from tensorflow import (constant,
 from os.path import join
 from numpy import array
 from os import listdir
-from cv2 import imread
 
 
 def ls(path: str) -> list:
@@ -22,11 +21,11 @@ class dataset_model:
 
     def _read_image(self,
                     filename: str,
-                    istarget:bool=False) -> array:
+                    istarget: bool = False) -> array:
         image = io.read_file(filename)
-        channel=3
+        channel = 3
         if istarget:
-            channel=1
+            channel = 1
         image = image_tf.decode_png(image,
                                     channels=channel)
         image = image_tf.convert_image_dtype(image,
@@ -68,10 +67,10 @@ class dataset_model:
                             size)
 
     def _split_dataset(self,
-                       dataset:Dataset,
-                       size:int)->Dataset:
-        dataset=dataset.shuffle(1000000,
-                                seed=2022)
+                       dataset: Dataset,
+                       size: int) -> Dataset:
+        dataset = dataset.shuffle(1000000,
+                                  seed=2022)
         train_size = int(0.9*size)
         test_size = size-train_size
         self.train = dataset.take(train_size)

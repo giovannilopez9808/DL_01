@@ -6,17 +6,12 @@ from tensorflow import (random_normal_initializer,
                         function,
                         math,
                         abs)
-from tensorflow.summary import (create_file_writer,
-                                scalar)
 from keras.layers import (BatchNormalization,
                           Conv2DTranspose,
                           ZeroPadding2D,
                           concatenate,
-                          LeakyReLU,
-                          Dropout,
                           Conv2D,
-                          Input,
-                          ReLU)
+                          Input)
 from keras.losses import BinaryCrossentropy
 from tensorflow.train import Checkpoint
 from keras.optimizers import Adam
@@ -31,26 +26,23 @@ OUTPUT_CHANNELS = 1
 LAMBDA = 100
 
 
-def upsample(filters,
-             size,
-             apply_dropout=False) -> Model:
+def upsample(filters: int,
+             size: int) -> Model:
     initializer = random_normal_initializer(0., 0.02)
-    result = Sequential()
-    result.add(
+    result = Sequential([
         Conv2DTranspose(filters,
                         size,
                         strides=2,
                         padding='same',
                         kernel_initializer=initializer,
-                        use_bias=False)
-    )
-    result.add(BatchNormalization())
-    if apply_dropout:
-        result.add(Dropout(0.5))
+                        use_bias=False),
+        BatchNormalization()
+    ])
     return result
 
-def get_conv_layer(filters,
-                   size) -> Model:
+
+def get_conv_layer(filters: int,
+                   size: int) -> Model:
     initializer = random_normal_initializer(0, 0.02)
     result = Sequential([
         Conv2D(filters,
@@ -70,22 +62,18 @@ def get_conv_blocks() -> list:
     return conv_blocks
 
 
-
-def downsample(filters,
-               size,
-               apply_batchnorm=True) -> Model:
+def downsample(filters: int,
+               size: int) -> Model:
     initializer = random_normal_initializer(0., 0.02)
-    result = Sequential()
-    result.add(
+    result = Sequential([
         Conv2D(filters,
                size,
                strides=2,
                padding='same',
                kernel_initializer=initializer,
-               use_bias=False)
-    )
-    if apply_batchnorm:
-        result.add(BatchNormalization())
+               use_bias=False),
+        BatchNormalization()
+    ])
     return result
 
 
@@ -115,8 +103,8 @@ def Generator() -> Model:
     conv_blocks = get_conv_blocks()
     initializer = random_normal_initializer(0., 0.02)
     conv1 = Conv2D(64,
-                  4,
-                  padding="same")
+                   4,
+                   padding="same")
     conv2 = Conv2D(32,
                    4,
                    padding="same")
@@ -132,7 +120,7 @@ def Generator() -> Model:
         x1 = conv_block(x1)
         x2 = conv_block(x2)
     x3 = math.subtract(x1,
-                      x2)
+                       x2)
     x4 = math.add(x1,
                   x2)
     x = concatenate([x3,
@@ -145,8 +133,8 @@ def Generator() -> Model:
     for up, skip in zip(up_stack, skips):
         x = up(x)
         x = concatenate([x, skip])
-    x=conv1(x)
-    x=conv2(x)
+    x = conv1(x)
+    x = conv2(x)
     x = last(x)
     return Model(inputs=[left_input,
                          right_input],
@@ -169,29 +157,32 @@ def Discriminator() -> Model:
                        name='left_input_image')
     right_input = Input(shape=[256, 256, 3],
                         name='right_input_image')
-    tar = Input(shape=[256, 256, 1],
-                name='target_image')
+    target = Input(shape=[256, 256, 1],
+                   name='target_image')
+    zeropadding_1 = ZeroPadding2D()
+    zeropadding_2 = ZeroPadding2D()
+    conv_1 = Conv2D(512,
+                    4,
+                    strides=1,
+                    kernel_initializer=initializer,
+                    use_bias=False)
+    conv_2 = Conv2D(1,
+                    4,
+                    strides=1,
+                    kernel_initializer=initializer)
     x = concatenate([left_input,
                      right_input,
-                     tar])
+                     target])
     down1 = downsample(64, 4, False)(x)
     down2 = downsample(128, 4)(down1)
-    zero_pad1 = ZeroPadding2D()(down2)
-    conv = Conv2D(512,
-                  4,
-                  strides=1,
-                  kernel_initializer=initializer,
-                  use_bias=False)(zero_pad1)
+    zero_pad1 = zeropadding_1(down2)
+    conv = conv_1(zero_pad1)
     batchnorm1 = BatchNormalization()(conv)
-    leaky_relu = batchnorm1
-    zero_pad2 = ZeroPadding2D()(leaky_relu)
-    last = Conv2D(1,
-                  4,
-                  strides=1,
-                  kernel_initializer=initializer)(zero_pad2)
+    zero_pad2 = zeropadding_2(batchnorm1)
+    last = conv_2(zero_pad2)
     return Model(inputs=[left_input,
                          right_input,
-                         tar],
+                         target],
                  outputs=last)
 
 
@@ -215,11 +206,6 @@ class pix2pix:
         self.generator = Generator()
         self._get_optimizers()
         self._create_checkpoint()
-        self._create_log_file()
-
-    def _create_log_file(self) -> None:
-        filename = "../model.log"
-        self.summary_writer = create_file_writer(filename)
 
     def _get_optimizers(self) -> None:
         self.generator_optimizer = Adam(2e-4,
@@ -307,19 +293,6 @@ class pix2pix:
             zip(discriminator_gradients,
                 self.discriminator.trainable_variables)
         )
-        with self.summary_writer.as_default():
-            scalar('gen_total_loss',
-                   gen_total_loss,
-                   step=step//1000)
-            scalar('gen_gan_loss',
-                   gen_gan_loss,
-                   step=step//1000)
-            scalar('gen_l1_loss',
-                   gen_l1_loss,
-                   step=step//1000)
-            scalar('disc_loss',
-                   disc_loss,
-                   step=step//1000)
 
     def _save_models(self) -> None:
         path = "../Models"
