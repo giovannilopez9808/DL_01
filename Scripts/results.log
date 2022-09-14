@@ -1,9 +1,9 @@
 g-0-11
-Tue 13 Sep 2022 09:19:34 PM CDT
-2022-09-13 21:19:44.461398: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F AVX512_VNNI FMA
+Tue 13 Sep 2022 09:34:08 PM CDT
+2022-09-13 21:34:14.478116: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F AVX512_VNNI FMA
 To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2022-09-13 21:19:45.428720: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 22844 MB memory:  -> device: 0, name: NVIDIA TITAN RTX, pci bus id: 0000:5e:00.0, compute capability: 7.5
-2022-09-13 21:19:45.429408: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 22844 MB memory:  -> device: 1, name: NVIDIA TITAN RTX, pci bus id: 0000:86:00.0, compute capability: 7.5
+2022-09-13 21:34:15.444477: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 22844 MB memory:  -> device: 0, name: NVIDIA TITAN RTX, pci bus id: 0000:5e:00.0, compute capability: 7.5
+2022-09-13 21:34:15.445160: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 22844 MB memory:  -> device: 1, name: NVIDIA TITAN RTX, pci bus id: 0000:86:00.0, compute capability: 7.5
 Model: "model_1"
 __________________________________________________________________________________________________
  Layer (type)                   Output Shape         Param #     Connected to                     
@@ -88,9 +88,7 @@ ________________________________________________________________________________
  batch_normalization_1 (BatchNo  (None, 63, 63, 512)  2048       ['conv2d_2[0][0]']               
  rmalization)                                                                                     
                                                                                                   
- leaky_re_lu_2 (LeakyReLU)      (None, 63, 63, 512)  0           ['batch_normalization_1[0][0]']  
-                                                                                                  
- zero_padding2d_1 (ZeroPadding2  (None, 65, 65, 512)  0          ['leaky_re_lu_2[0][0]']          
+ zero_padding2d_1 (ZeroPadding2  (None, 65, 65, 512)  0          ['batch_normalization_1[0][0]']  
  D)                                                                                               
                                                                                                   
  conv2d_3 (Conv2D)              (None, 62, 62, 1)    8193        ['zero_padding2d_1[0][0]']       
@@ -100,11 +98,11 @@ Total params: 1,197,569
 Trainable params: 1,196,289
 Non-trainable params: 1,280
 __________________________________________________________________________________________________
-2022-09-13 21:19:52.770190: I tensorflow/core/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
-2022-09-13 21:19:55.835603: I tensorflow/stream_executor/cuda/cuda_dnn.cc:384] Loaded cuDNN version 8302
-2022-09-13 21:19:56.499141: I tensorflow/core/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
+2022-09-13 21:34:22.585792: I tensorflow/core/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
+2022-09-13 21:34:25.701739: I tensorflow/stream_executor/cuda/cuda_dnn.cc:384] Loaded cuDNN version 8302
+2022-09-13 21:34:26.368777: I tensorflow/core/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
 None
 Step: 0k
 ....................................................................................................WARNING:tensorflow:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
 WARNING:tensorflow:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
-Tue 13 Sep 2022 09:20:27 PM CDT
+Tue 13 Sep 2022 09:34:57 PM CDT

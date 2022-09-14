@@ -48,7 +48,7 @@ def upsample(filters,
     if apply_dropout:
         pass
         result.add(Dropout(0.5))
-    result.add(ReLU())
+    # result.add(ReLU())
     return result
 
 def get_conv_layer(filters,
@@ -61,7 +61,7 @@ def get_conv_layer(filters,
                kernel_initializer=initializer,
                ),
         BatchNormalization(),
-        ReLU(),
+        # ReLU(),
     ])
     return result
 
@@ -96,7 +96,7 @@ def downsample(filters,
     if apply_batchnorm:
         pass
         result.add(BatchNormalization())
-    result.add(LeakyReLU())
+    # result.add(LeakyReLU())
     return result
 
 
@@ -225,8 +225,8 @@ def Discriminator() -> Model:
                   use_bias=False)(zero_pad1)
     batchnorm1 = BatchNormalization()(conv)
     # batchnorm1=conv
-    # leaky_relu = batchnorm1
-    leaky_relu = LeakyReLU()(batchnorm1)
+    leaky_relu = batchnorm1
+    # leaky_relu = LeakyReLU()(batchnorm1)
     # (batch_size, 33, 33, 512)
     zero_pad2 = ZeroPadding2D()(leaky_relu)
     # (batch_size, 30, 30, 1)
