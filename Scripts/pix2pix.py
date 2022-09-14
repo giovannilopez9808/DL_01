@@ -46,9 +46,7 @@ def upsample(filters,
     )
     result.add(BatchNormalization())
     if apply_dropout:
-        pass
         result.add(Dropout(0.5))
-    # result.add(ReLU())
     return result
 
 def get_conv_layer(filters,
@@ -61,20 +59,13 @@ def get_conv_layer(filters,
                kernel_initializer=initializer,
                ),
         BatchNormalization(),
-        # ReLU(),
     ])
     return result
 
 
 def get_conv_blocks() -> list:
     conv_blocks = [
-        # get_conv_layer(128, 3),
-        # get_conv_layer(128, 3),
-        # get_conv_layer(64, 3),
         get_conv_layer(64, 4),
-        # get_conv_layer(32, 3),
-        # get_conv_layer(32, 3),
-        # get_conv_layer(128, 3),
     ]
     return conv_blocks
 
@@ -94,9 +85,7 @@ def downsample(filters,
                use_bias=False)
     )
     if apply_batchnorm:
-        pass
         result.add(BatchNormalization())
-    # result.add(LeakyReLU())
     return result
 
 
@@ -109,36 +98,22 @@ def Generator() -> Model:
                                256,
                                3],
                         name="right_generator")
-    # conv_blocks = get_conv_blocks()
     down_stack = [
-        # (batch_size, 128, 128, 64)
         downsample(32,
                    4),
-        # (batch_size, 64, 64, 128)
         downsample(64,
                    4),
-        # (batch_size, 32, 32, 256)
         downsample(128,
                    4),
-        # downsample(256,
-                  # 4),
     ]
     up_stack = [
-        # upsample(512,
-                 # 4),
-        # (batch_size, 32, 32, 512)
-        # upsample(256,
-                 # 4),
-        # (batch_size, 64, 64, 256)
         upsample(64,
                  4),
-        # (batch_size, 128, 128, 128)
         upsample(32,
                  4),
     ]
     conv_blocks = get_conv_blocks()
     initializer = random_normal_initializer(0., 0.02)
-    # (batch_size, 256, 256, 3)
     conv1 = Conv2D(64,
                   4,
                   padding="same")
@@ -162,17 +137,11 @@ def Generator() -> Model:
                   x2)
     x = concatenate([x3,
                      x4])
-    # x2 = left_input
-    # x2 = right_input
-    # x = concatenate([x1,
-                     # x2])
-    # Downsampling through the model
     skips = []
     for down in down_stack:
         x = down(x)
         skips.append(x)
     skips = reversed(skips[:-1])
-    # Upsampling and establishing the skip connections
     for up, skip in zip(up_stack, skips):
         x = up(x)
         x = concatenate([x, skip])
@@ -200,36 +169,22 @@ def Discriminator() -> Model:
                        name='left_input_image')
     right_input = Input(shape=[256, 256, 3],
                         name='right_input_image')
-    # (batch_size, 256, 256, channels*2)
     tar = Input(shape=[256, 256, 1],
                 name='target_image')
-    # x = math.subtract(left_input,
-                       # right_input)
     x = concatenate([left_input,
                      right_input,
                      tar])
-    # x = concatenate([inp, tar])
-    # (batch_size, 128, 128, 64)
     down1 = downsample(64, 4, False)(x)
-    # (batch_size, 64, 64, 128)
     down2 = downsample(128, 4)(down1)
-    # (batch_size, 32, 32, 256)
-    # down3 = downsample(256, 4)(down2)
-    # (batch_size, 34, 34, 256)
     zero_pad1 = ZeroPadding2D()(down2)
-    # (batch_size, 31, 31, 512)
     conv = Conv2D(512,
                   4,
                   strides=1,
                   kernel_initializer=initializer,
                   use_bias=False)(zero_pad1)
     batchnorm1 = BatchNormalization()(conv)
-    # batchnorm1=conv
     leaky_relu = batchnorm1
-    # leaky_relu = LeakyReLU()(batchnorm1)
-    # (batch_size, 33, 33, 512)
     zero_pad2 = ZeroPadding2D()(leaky_relu)
-    # (batch_size, 30, 30, 1)
     last = Conv2D(1,
                   4,
                   strides=1,
@@ -258,8 +213,6 @@ class pix2pix:
     def _create_model(self) -> None:
         self.discriminator = Discriminator()
         self.generator = Generator()
-        print(self.generator.summary())
-        print(self.discriminator.summary())
         self._get_optimizers()
         self._create_checkpoint()
         self._create_log_file()
