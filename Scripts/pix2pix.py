@@ -36,7 +36,7 @@ def upsample(filters: int,
                         padding='same',
                         kernel_initializer=initializer,
                         use_bias=False),
-        BatchNormalization()
+        # BatchNormalization()
     ])
     return result
 
@@ -49,6 +49,7 @@ def get_conv_layer(filters: int,
                size,
                padding="same",
                kernel_initializer=initializer,
+               activation="tanh",
                ),
         BatchNormalization(),
     ])
@@ -91,13 +92,15 @@ def Generator() -> Model:
                    4),
         downsample(64,
                    4),
-        downsample(128,
+        downsample(132,
                    4),
+        # downsample(128,
+                   # 4),
     ]
     up_stack = [
-        upsample(64,
+        upsample(132,
                  4),
-        upsample(32,
+        upsample(64,
                  4),
     ]
     conv_blocks = get_conv_blocks()
@@ -170,10 +173,14 @@ def Discriminator() -> Model:
                     4,
                     strides=1,
                     kernel_initializer=initializer)
-    x = concatenate([left_input,
-                     right_input,
+    x1 = math.subtract(left_input,
+                       right_input)
+    x2 = math.add(left_input,
+                  right_input)
+    x = concatenate([x1,
+                     x2,
                      target])
-    down1 = downsample(64, 4, False)(x)
+    down1 = downsample(64, 4)(x)
     down2 = downsample(128, 4)(down1)
     zero_pad1 = zeropadding_1(down2)
     conv = conv_1(zero_pad1)
@@ -248,7 +255,7 @@ class pix2pix:
                       end='',
                       flush=True)
             # Save (checkpoint) the model every 5k steps
-            if (step + 1) % 10000 == 0:
+            if (step + 1) % 20000 == 0:
                 self.checkpoint.save(file_prefix=self.checkpoint_prefix)
         self._save_models()
 

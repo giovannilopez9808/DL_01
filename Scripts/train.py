@@ -9,7 +9,7 @@ model = pix2pix()
 data = list(dataset.train.take(1).as_numpy_iterator())
 left, right, target = data[0]
 model.fit(dataset.train,
-          1000)
+          100000)
 predict = model.generator([left,
                            right])
 predict = predict.numpy()[0]
