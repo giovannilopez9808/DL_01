@@ -18,8 +18,7 @@ class dataset_model:
     def __init__(self,
                  params: dict) -> None:
         self.params = params
-        self._read_train_dataset()
-        self._read_test_dataset()
+        self._read_dataset()
 
     def _read_image(self,
                     filename: str,
@@ -58,21 +57,25 @@ class dataset_model:
         image = image*dos-one
         return image
 
-    def _read_train_dataset(self) -> array:
-        path = join(self.params["path data"],
-                    self.params["train data"])
+    def _read_dataset(self) -> Dataset:
+        path = join(self.params["path data"])
         files = ls(path)
+        size = len(files)//3
         dataset = self._split_input_target_filenames(path,
                                                      files)
-        self.train = self._get_images_dataset(dataset)
+        dataset = self._get_images_dataset(dataset)
+        self._split_dataset(dataset,
+                            size)
 
-    def _read_test_dataset(self) -> array:
-        path = join(self.params["path data"],
-                    self.params["test data"])
-        files = ls(path)
-        dataset = self._split_input_target_filenames(path,
-                                                     files)
-        self.test = self._get_images_dataset(dataset)
+    def _split_dataset(self,
+                       dataset:Dataset,
+                       size:int)->Dataset:
+        dataset=dataset.shuffle(1000000,
+                                seed=2022)
+        train_size = int(0.9*size)
+        test_size = size-train_size
+        self.train = dataset.take(train_size)
+        self.test = dataset.skip(train_size).take(test_size)
 
     def _split_input_target_filenames(self,
                                       path: str,

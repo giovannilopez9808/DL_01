@@ -4,6 +4,7 @@ from tensorflow import (random_normal_initializer,
                         zeros_like,
                         ones_like,
                         function,
+                        math,
                         abs)
 from tensorflow.summary import (create_file_writer,
                                 scalar)
@@ -33,40 +34,68 @@ LAMBDA = 100
 def upsample(filters,
              size,
              apply_dropout=False) -> Model:
-    # initializer = random_normal_initializer(0., 0.02)
+    initializer = random_normal_initializer(0., 0.02)
     result = Sequential()
     result.add(
         Conv2DTranspose(filters,
                         size,
                         strides=2,
                         padding='same',
-                        # kernel_initializer=initializer,
+                        kernel_initializer=initializer,
                         use_bias=False)
     )
     result.add(BatchNormalization())
     if apply_dropout:
         pass
-        # result.add(Dropout(0.5))
+        result.add(Dropout(0.5))
     result.add(ReLU())
     return result
+
+def get_conv_layer(filters,
+                   size) -> Model:
+    initializer = random_normal_initializer(0, 0.02)
+    result = Sequential([
+        Conv2D(filters,
+               size,
+               padding="same",
+               kernel_initializer=initializer,
+               ),
+        BatchNormalization(),
+        ReLU(),
+    ])
+    return result
+
+
+def get_conv_blocks() -> list:
+    conv_blocks = [
+        # get_conv_layer(128, 3),
+        # get_conv_layer(128, 3),
+        # get_conv_layer(64, 3),
+        get_conv_layer(64, 4),
+        # get_conv_layer(32, 3),
+        # get_conv_layer(32, 3),
+        # get_conv_layer(128, 3),
+    ]
+    return conv_blocks
+
 
 
 def downsample(filters,
                size,
                apply_batchnorm=True) -> Model:
-    # initializer = random_normal_initializer(0., 0.02)
+    initializer = random_normal_initializer(0., 0.02)
     result = Sequential()
     result.add(
         Conv2D(filters,
                size,
                strides=2,
                padding='same',
-               # kernel_initializer=initializer,
+               kernel_initializer=initializer,
                use_bias=False)
     )
     if apply_batchnorm:
         pass
-        # result.add(BatchNormalization())
+        result.add(BatchNormalization())
     result.add(LeakyReLU())
     return result
 
@@ -83,27 +112,32 @@ def Generator() -> Model:
     # conv_blocks = get_conv_blocks()
     down_stack = [
         # (batch_size, 128, 128, 64)
-        downsample(64,
+        downsample(32,
                    4),
         # (batch_size, 64, 64, 128)
-        downsample(128,
+        downsample(64,
                    4),
         # (batch_size, 32, 32, 256)
+        downsample(128,
+                   4),
         # downsample(256,
-                   # 4),
+                  # 4),
     ]
     up_stack = [
+        # upsample(512,
+                 # 4),
         # (batch_size, 32, 32, 512)
         # upsample(256,
                  # 4),
         # (batch_size, 64, 64, 256)
-        upsample(128,
-                 4),
-        # (batch_size, 128, 128, 128)
         upsample(64,
                  4),
+        # (batch_size, 128, 128, 128)
+        upsample(32,
+                 4),
     ]
-    # initializer = random_normal_initializer(0., 0.02)
+    conv_blocks = get_conv_blocks()
+    initializer = random_normal_initializer(0., 0.02)
     # (batch_size, 256, 256, 3)
     conv1 = Conv2D(64,
                   4,
@@ -115,15 +149,23 @@ def Generator() -> Model:
                            4,
                            strides=2,
                            padding='same',
-                           # kernel_initializer=initializer,
+                           kernel_initializer=initializer,
                            activation="tanh")
     x1 = left_input
     x2 = right_input
-    # for conv_block in conv_blocks:
-        # x1 = conv_block(x1)
-        # x2 = conv_block(x2)
-    x = concatenate([x1,
-                     x2])
+    for conv_block in conv_blocks:
+        x1 = conv_block(x1)
+        x2 = conv_block(x2)
+    x3 = math.subtract(x1,
+                      x2)
+    x4 = math.add(x1,
+                  x2)
+    x = concatenate([x3,
+                     x4])
+    # x2 = left_input
+    # x2 = right_input
+    # x = concatenate([x1,
+                     # x2])
     # Downsampling through the model
     skips = []
     for down in down_stack:
@@ -161,11 +203,11 @@ def Discriminator() -> Model:
     # (batch_size, 256, 256, channels*2)
     tar = Input(shape=[256, 256, 1],
                 name='target_image')
-    x1 = left_input
-    x2 = right_input
-    x = concatenate([x1,
-                       x2,
-                       tar])
+    # x = math.subtract(left_input,
+                       # right_input)
+    x = concatenate([left_input,
+                     right_input,
+                     tar])
     # x = concatenate([inp, tar])
     # (batch_size, 128, 128, 64)
     down1 = downsample(64, 4, False)(x)
@@ -181,8 +223,8 @@ def Discriminator() -> Model:
                   strides=1,
                   kernel_initializer=initializer,
                   use_bias=False)(zero_pad1)
-    # batchnorm1 = BatchNormalization()(conv)
-    batchnorm1=conv
+    batchnorm1 = BatchNormalization()(conv)
+    # batchnorm1=conv
     # leaky_relu = batchnorm1
     leaky_relu = LeakyReLU()(batchnorm1)
     # (batch_size, 33, 33, 512)
