@@ -10,7 +10,7 @@ model.restore()
 data = list(dataset.train.take(1).as_numpy_iterator())
 left, right, target = data[0]
 model.fit(dataset.train,
-          500000)
+          1000)
 predict = model.generator([left,
                            right])
 predict = predict.numpy()[0]
