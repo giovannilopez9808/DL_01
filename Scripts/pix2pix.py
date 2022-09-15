@@ -96,12 +96,14 @@ def Generator() -> Model:
         downsample(132,
                    4),
         # downsample(128,
-                   # 4),
+        # 4),
     ]
     up_stack = [
         upsample(132,
                  4),
         upsample(64,
+                 4),
+        upsample(32,
                  4),
     ]
     conv_blocks = get_conv_blocks()
@@ -137,7 +139,7 @@ def Generator() -> Model:
     for up, skip in zip(up_stack, skips):
         x = up(x)
         x = concatenate([x, skip])
-    x = conv1(x) 
+    x = conv1(x)
     x = conv2(x)
     x = last(x)
     return Model(inputs=[left_input,
@@ -181,7 +183,8 @@ def Discriminator() -> Model:
     x = concatenate([x1,
                      x2,
                      target])
-    down1 = downsample(64, 4)(x)
+    down = downsample(32, 4)(x)
+    down1 = downsample(64, 4)(down)
     down2 = downsample(128, 4)(down1)
     zero_pad1 = zeropadding_1(down2)
     conv = conv_1(zero_pad1)
@@ -206,7 +209,7 @@ def discriminator_loss(disc_real_output,
 
 class pix2pix:
     def __init__(self,
-                 params:dict) -> None:
+                 params: dict) -> None:
         self.checkpoint_path = params["checkpoint path"]
         self._create_model()
 
@@ -285,6 +288,9 @@ class pix2pix:
             )
             disc_loss = discriminator_loss(disc_real_output,
                                            disc_generated_output)
+            print("------")
+            print(gen_total_loss, disc_loss)
+            print("------")
             generator_gradients = gen_tape.gradient(
                 gen_total_loss,
                 self.generator.trainable_variables
@@ -302,6 +308,6 @@ class pix2pix:
                 self.discriminator.trainable_variables)
         )
 
-    def restore(self)->Model:
+    def restore(self) -> Model:
         latest = latest_checkpoint(self.checkpoint_path)
         self.checkpoint.restore(latest)
