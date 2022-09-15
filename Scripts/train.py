@@ -6,11 +6,11 @@ from pix2pix import pix2pix
 params = get_params()
 dataset = dataset_model(params)
 model = pix2pix(params)
-model.restore()
+# model.restore()
 data = list(dataset.train.take(1).as_numpy_iterator())
 left, right, target = data[0]
-model.fit(dataset.train,
-          1000)
+model.fit(dataset,
+          100000)
 predict = model.generator([left,
                            right])
 predict = predict.numpy()[0]

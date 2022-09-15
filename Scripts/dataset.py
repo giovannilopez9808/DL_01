@@ -72,9 +72,11 @@ class dataset_model:
         dataset = dataset.shuffle(1000000,
                                   seed=2022)
         train_size = int(0.9*size)
-        test_size = size-train_size
+        val_size = int(0.05*size)
+        test_size = size-train_size-val_size
         self.train = dataset.take(train_size)
-        self.test = dataset.skip(train_size).take(test_size)
+        self.val = dataset.skip(train_size).take(val_size)
+        self.test = dataset.skip(train_size+val_size).take(test_size)
 
     def _split_input_target_filenames(self,
                                       path: str,

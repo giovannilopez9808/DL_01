@@ -12,6 +12,8 @@ from keras.layers import (BatchNormalization,
                           concatenate,
                           Conv2D,
                           Input)
+from tensorflow.summary import (create_file_writer,
+                                scalar)
 from tensorflow.train import (latest_checkpoint,
                               Checkpoint)
 from keras.losses import BinaryCrossentropy
@@ -37,7 +39,7 @@ def upsample(filters: int,
                         padding='same',
                         kernel_initializer=initializer,
                         use_bias=False),
-        # BatchNormalization()
+        BatchNormalization()
     ])
     return result
 
@@ -183,8 +185,7 @@ def Discriminator() -> Model:
     x = concatenate([x1,
                      x2,
                      target])
-    down = downsample(32, 4)(x)
-    down1 = downsample(64, 4)(down)
+    down1 = downsample(64, 4)(x)
     down2 = downsample(128, 4)(down1)
     zero_pad1 = zeropadding_1(down2)
     conv = conv_1(zero_pad1)
@@ -212,6 +213,18 @@ class pix2pix:
                  params: dict) -> None:
         self.checkpoint_path = params["checkpoint path"]
         self._create_model()
+        self._create_summary_file(params)
+
+    def _create_summary_file(self,
+                             params:dict)->None:
+        path = params["log path"]
+        train_path = f"{path}_train"
+        val_path = f"{path}_val"
+        test_path = f"{path}_test"
+        self.train_summary = create_file_writer(train_path)
+        self.val_summary = create_file_writer(val_path)
+        self.test_summary = create_file_writer(test_path)
+        
 
     def _create_model(self) -> None:
         self.discriminator = Discriminator()
@@ -236,34 +249,37 @@ class pix2pix:
                                       "checkpoint_model_")
 
     def fit(self,
-            train_dataset: list,
+            dataset,
             steps: int):
         start = time.time()
-        for step, data in train_dataset.repeat().take(steps).enumerate():
-            left, right, target = data
-            if (step) % 1000 == 0:
-                if step != 0:
-                    print(
-                        '\nTime taken for 1000 steps: {:.2f} sec\n'.format(
-                            time.time()-start
-                        )
-                    )
-                start = time.time()
-                print(f"Step: {step//1000}k")
-            self._train_step(left,
-                             right,
-                             target,
+        for step, (train_data,val_data,test_data) in enumerate(
+            zip(dataset.train.repeat().take(steps),
+                dataset.val.repeat().take(steps),
+                dataset.test.repeat().take(steps))):
+            train_left, train_right, train_target = train_data
+            val_left,val_right,val_target=val_data
+            test_left,test_right,test_target=test_data
+            if step%1000==0:
+                print(f"Step: {step}k")
+            self._train_step(train_left,
+                             train_right,
+                             train_target,
                              step)
-            # Training step
-            if (step+1) % 10 == 0:
-                print('.',
-                      end='',
-                      flush=True)
+            self._val_test_step(val_left,
+                                val_right,
+                                val_target,
+                                step,
+                                "Validation")
+            self._val_test_step(test_left,
+                                test_right,
+                                test_target,
+                                step,
+                                "Test")
             # Save (checkpoint) the model every 5k steps
-            if (step + 1) % 100000 == 0:
+            if (step + 1) % 20000 == 0:
                 self.checkpoint.save(file_prefix=self.checkpoint_prefix)
 
-    @function
+    # @function
     def _train_step(self,
                     left_image: list,
                     right_image: list,
@@ -288,9 +304,6 @@ class pix2pix:
             )
             disc_loss = discriminator_loss(disc_real_output,
                                            disc_generated_output)
-            print("------")
-            print(gen_total_loss, disc_loss)
-            print("------")
             generator_gradients = gen_tape.gradient(
                 gen_total_loss,
                 self.generator.trainable_variables
@@ -307,7 +320,66 @@ class pix2pix:
             zip(discriminator_gradients,
                 self.discriminator.trainable_variables)
         )
+        results={
+            "Total_loss": gen_total_loss,
+            "Generator_GAN_loss": gen_gan_loss,
+            "Gen_l1_loss": gen_l1_loss,
+            "Discriminator_loss": disc_loss,
+        }
+        self._write_summary(results,
+                            step,
+                            "Train")
+
+    def _val_test_step(self,
+                       left_image: list,
+                       right_image: list,
+                       target: array,
+                       step: int,
+                       data:str):
+        gen_output = self.generator([left_image,
+                                     right_image],
+                                    training=True)
+        disc_real_output = self.discriminator([left_image,
+                                               right_image,
+                                               target],
+                                              training=True)
+        disc_generated_output = self.discriminator([left_image,
+                                                    right_image,
+                                                    gen_output],
+                                                   training=True)
+        gen_total_loss, gen_gan_loss, gen_l1_loss = generator_loss(
+            disc_generated_output,
+            gen_output,
+            target
+        )
+        disc_loss = discriminator_loss(disc_real_output,
+                                       disc_generated_output)
+        results={
+            "Total_loss": gen_total_loss,
+            "Generator_GAN_loss": gen_gan_loss,
+            "Gen_l1_loss": gen_l1_loss,
+            "Discriminator_loss": disc_loss,
+        }
+        self._write_summary(results,
+                            step,
+                            data)
 
     def restore(self) -> Model:
         latest = latest_checkpoint(self.checkpoint_path)
         self.checkpoint.restore(latest)
+
+    def _write_summary(self,
+                       results:dict,
+                       step,
+                       data:str)->None:
+        if data=="Test":
+            summary=self.test_summary
+        if data=="Validation":
+            summary=self.val_summary
+        if data=="Train":
+            summary=self.train_summary
+        with summary.as_default():
+            for key,value in results.items():
+                scalar(key,
+                       value,
+                       step=step)
